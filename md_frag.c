@@ -133,11 +133,11 @@ int parse_chunks(fl_t *fl, const char *path_chunks) {
 
     int cur_chunk;
     int scanf_ret = 1;
-    while (!feof(fin) && (scanf_ret = fscanf(fin, "%d ", &cur_chunk)) != 0) {
+    while ((scanf_ret = fscanf(fin, "%d", &cur_chunk)) == 1) {
         fl_push_back(fl, cur_chunk);
     }
 
-    if (scanf_ret == 0 && !feof(fin)) {
+    if (scanf_ret != EOF) {
         log_err("%s: invalid format!", path_chunks);
         fclose(fin);
         return 1;
@@ -167,7 +167,7 @@ int parse_sizes(int **sizes, int *sizes_size, const char *path_sizes) {
 
     int cur_size;
     int scanf_ret = 1;
-    while (!feof(fin) && (scanf_ret = fscanf(fin, "%d ", &cur_size)) != 0) {
+    while ((scanf_ret = fscanf(fin, "%d", &cur_size)) == 1) {
         if (*sizes_size == sizes_cap) {
             sizes_cap *= 2;
             int *temp = realloc(*sizes, sizes_cap * sizeof(int));
@@ -183,7 +183,7 @@ int parse_sizes(int **sizes, int *sizes_size, const char *path_sizes) {
         (*sizes_size)++;
     }
 
-    if (scanf_ret == 0 && !feof(fin)) {
+    if (scanf_ret != EOF) {
         log_err("%s: invalid format!", path_sizes);
         goto free;
     }
