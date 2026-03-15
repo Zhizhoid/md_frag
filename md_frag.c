@@ -147,44 +147,45 @@ int parse_chunks(fl_t *fl, const char *path_chunks) {
     return 0;
 }
 
-// if the function fails - sizes is NULL
-// it is the caller's responsibility to free the sizes array if the function succeeds
-int parse_sizes(int **sizes, int *sizes_size, const char *path_sizes) {
+// parses file with integers separated by whitespace into nums
+// if the function fails - nums is NULL
+// it is the caller's responsibility to free the nums array if the function succeeds
+int parse_nums(int **nums, int *nums_size, const char *path) {
 #define SIZES_INITIAL_CAPACITY 8
     int ret = 1;
 
-    FILE *fin = fopen(path_sizes, "r");
+    FILE *fin = fopen(path, "r");
     if (!fin)
         return 1;
 
     int sizes_cap = SIZES_INITIAL_CAPACITY;
-    *sizes = malloc(sizes_cap * sizeof(int));
-    if (!*sizes) {
+    *nums = malloc(sizes_cap * sizeof(int));
+    if (!*nums) {
         perror("malloc");
         goto out;
     }
-    *sizes_size = 0;
+    *nums_size = 0;
 
     int cur_size;
     int scanf_ret = 1;
     while ((scanf_ret = fscanf(fin, "%d", &cur_size)) == 1) {
-        if (*sizes_size == sizes_cap) {
+        if (*nums_size == sizes_cap) {
             sizes_cap *= 2;
-            int *temp = realloc(*sizes, sizes_cap * sizeof(int));
+            int *temp = realloc(*nums, sizes_cap * sizeof(int));
             if (!temp) {
                 perror("realloc");
                 goto free;
             }
 
-            *sizes = temp;
+            *nums = temp;
         }
 
-        (*sizes)[*sizes_size] = cur_size;
-        (*sizes_size)++;
+        (*nums)[*nums_size] = cur_size;
+        (*nums_size)++;
     }
 
     if (scanf_ret != EOF) {
-        log_err("%s: invalid format!", path_sizes);
+        log_err("%s: invalid format!", path);
         goto free;
     }
 
@@ -192,8 +193,8 @@ int parse_sizes(int **sizes, int *sizes_size, const char *path_sizes) {
 
 free:
     if (ret != 0) {
-        free(*sizes);
-        *sizes = NULL;
+        free(*nums);
+        *nums = NULL;
     }
 
 out:
@@ -419,7 +420,7 @@ int main(int argc, const char *const *argv) {
         goto out;
     }
 
-    if (parse_sizes(&sizes, &sizes_size, path_sizes) != 0) {
+    if (parse_nums(&sizes, &sizes_size, path_sizes) != 0) {
         log_err("Failed to parse sizes!");
         goto out;
     }
