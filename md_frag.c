@@ -110,12 +110,12 @@ int parse_chunks(fl_t *fl, const char *path_chunks) {
         return 1;
 
     int cur_chunk;
-    int ret = 1;
-    while (!feof(fin) && (ret = fscanf(fin, "%d ", &cur_chunk)) != 0) {
+    int scanf_ret = 1;
+    while (!feof(fin) && (scanf_ret = fscanf(fin, "%d ", &cur_chunk)) != 0) {
         fl_push_back(fl, cur_chunk);
     }
 
-    if (ret == 0 && !feof(fin)) {
+    if (scanf_ret == 0 && !feof(fin)) {
         log_err("%s: invalid format!", path_chunks);
         fclose(fin);
         return 1;
@@ -123,6 +123,62 @@ int parse_chunks(fl_t *fl, const char *path_chunks) {
 
     fclose(fin);
     return 0;
+}
+
+// if the function fails - sizes is NULL
+// it is the caller's responsibility to free the sizes array if the function succeeds
+int parse_sizes(int **sizes, int *sizes_size, const char *path_sizes) {
+#define SIZES_INITIAL_CAPACITY 8
+    int ret = 1;
+
+    FILE *fin = fopen(path_sizes, "r");
+    if (!fin)
+        return 1;
+
+    int sizes_cap = SIZES_INITIAL_CAPACITY;
+    *sizes = malloc(sizes_cap * sizeof(int));
+    if (!*sizes) {
+        perror("malloc");
+        goto out;
+    }
+    *sizes_size = 0;
+
+    int cur_size;
+    int scanf_ret = 1;
+    while (!feof(fin) && (scanf_ret = fscanf(fin, "%d ", &cur_size)) != 0) {
+        if (*sizes_size == sizes_cap) {
+            sizes_cap *= 2;
+            int *temp = realloc(*sizes, sizes_cap * sizeof(int));
+            if (!temp) {
+                perror("realloc");
+                goto free;
+            }
+
+            *sizes = temp;
+        }
+
+        (*sizes)[*sizes_size] = cur_size;
+        (*sizes_size)++;
+    }
+
+    if (scanf_ret == 0 && !feof(fin)) {
+        log_err("%s: invalid format!", path_sizes);
+        goto free;
+    }
+
+    ret = 0;
+
+free:
+    if (ret != 0) {
+        free(*sizes);
+        *sizes = NULL;
+    }
+
+out:
+    fclose(fin);
+
+    return ret;
+#undef SIZES_INITIAL_CAPACITY
 }
 
 int main(int argc, const char *const *argv) {
@@ -140,19 +196,34 @@ int main(int argc, const char *const *argv) {
     }
 
     int ret = 1;
-
     fl_t fl = fl_init();
+    int *sizes = NULL;
+    int sizes_size;
+
     if (parse_chunks(&fl, path_chunks) != 0) {
         log_err("Failed to parse chunks!");
         goto out;
     }
 
+    if (parse_sizes(&sizes, &sizes_size, path_sizes) != 0) {
+        log_err("Failed to parse sizes!");
+        goto out;
+    }
+
+    printf("Chunks:\n");
     fl_print(&fl);
+    printf("Sizes:\n");
+    for (int i = 0; i < sizes_size; i++) {
+        printf("%d%s", sizes[i], (i == sizes_size - 1) ? "\n" : ", ");
+    }
 
     ret = 0;
-    
+
 out:
     fl_free(&fl);
+    if (sizes) {
+        free(sizes);
+    }
 
     return ret;
 }
