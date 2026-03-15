@@ -270,7 +270,7 @@ void test_alloc_funcs(const fl_t *fl, const int *sizes, int sizes_size, const al
         fl_t fl_copy = fl_cp(fl);
 
         for (int j = 0; j < sizes_size; j++) {
-            int cur_size = sizes[i];
+            int cur_size = sizes[j];
 
             int alloc_ret = f(&fl_copy, cur_size);
             if (!alloc_ret) {
@@ -310,7 +310,7 @@ void bench_alloc_funcs(const fl_t *fl, const int *sizes, int sizes_size, const a
         }
         clock_gettime(CLOCK_MONOTONIC, &end);
 
-        double time_total = (end.tv_sec - start.tv_sec) - (end.tv_nsec - start.tv_nsec) / 1e9;
+        double time_total = (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1e9;
 
         clock_gettime(CLOCK_MONOTONIC, &start);
         for (int i = 0; i < iterations; i++) {
@@ -320,7 +320,7 @@ void bench_alloc_funcs(const fl_t *fl, const int *sizes, int sizes_size, const a
         }
         clock_gettime(CLOCK_MONOTONIC, &end);
 
-        double time_overhead = (end.tv_sec - start.tv_sec) - (end.tv_nsec - start.tv_nsec) / 1e9;
+        double time_overhead = (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1e9;
 
         cur_result->avg_time = (time_total - time_overhead) / iterations;
         cur_result->iterations = iterations;
@@ -343,7 +343,7 @@ void print_results(const char *const *func_names, test_result_t *test_results, b
         printf("Fragmented memory: %d\n", cur_tres->total_free_memory - cur_tres->largest_free_chunk);
         printf("Fragmented memory ratio: %f\n",
                (cur_tres->total_free_memory - cur_tres->largest_free_chunk) / (double)cur_tres->total_free_memory);
-        printf("Execution time average: %f (%d iterations)\n", cur_bres->avg_time, cur_bres->iterations);
+        printf("Execution time average: %fms (%d iterations)\n", cur_bres->avg_time * 1e3, cur_bres->iterations);
         printf("\n");
     }
 }
