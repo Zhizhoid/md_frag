@@ -273,7 +273,7 @@ void test_alloc_funcs(const fl_t *fl, const int *sizes, int sizes_size, const al
             int cur_size = sizes[j];
 
             int alloc_ret = f(&fl_copy, cur_size);
-            if (!alloc_ret) {
+            if (alloc_ret != 0) {
                 cur_result->failed_allocs++;
                 cur_result->bytes_not_allocated += cur_size;
             }
