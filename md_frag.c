@@ -53,7 +53,7 @@ typedef struct fl {
     fl_node_t *tail;
 } fl_t;
 
-fl_t fl_init() {
+fl_t fl_init(void) {
     return (fl_t){.tail = NULL};
 }
 
