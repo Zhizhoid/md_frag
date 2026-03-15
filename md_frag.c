@@ -54,10 +54,11 @@ typedef struct fl_node {
 // free list
 typedef struct fl {
     fl_node_t *tail;
+    fl_node_t *roving; // for next-fit
 } fl_t;
 
 fl_t fl_init(void) {
-    return (fl_t){.tail = NULL};
+    return (fl_t){.tail = NULL, .roving = NULL};
 }
 
 void fl_free(fl_t *fl) {
@@ -74,6 +75,7 @@ void fl_free(fl_t *fl) {
 
     free(fl->tail);
     fl->tail = NULL;
+    fl->roving = NULL;
 }
 
 void fl_push_back(fl_t *fl, int size) {
@@ -382,13 +384,150 @@ int alloc_func_first_fit(fl_t *fl, int size) {
     return 0;
 }
 
-#define ALLOC_FUNC_COUNT 1
+int alloc_func_next_fit(fl_t *fl, int size) {
+    if (!fl->tail)
+        return 1;
+
+    fl_node_t *prev;
+    fl_node_t *start;
+
+    if (fl->roving) {
+        prev = fl->roving;
+        start = fl->roving->next;
+    } else {
+        prev = fl->tail;
+        start = fl->tail->next;
+    }
+
+    fl_node_t *p = start;
+
+    do {
+        if (p->size >= size)
+            break;
+        prev = p;
+        p = p->next;
+    } while (p != start);
+
+    if (p->size < size)
+        return 1;
+
+    if (p->size == size) {
+        if (p == prev) {
+            free(fl->tail);
+            fl->tail = NULL;
+            fl->roving = NULL;
+        } else {
+            if (p == fl->tail)
+                fl->tail = prev;
+            prev->next = p->next;
+            fl->roving = prev;
+            free(p);
+        }
+        return 0;
+    }
+
+    p->size -= size;
+    fl->roving = p;
+    return 0;
+}
+
+int alloc_func_best_fit(fl_t *fl, int size) {
+    if (!fl->tail)
+        return 1;
+
+    fl_node_t *prev = fl->tail;
+    fl_node_t *p = fl->tail->next;
+
+    fl_node_t *best = NULL;
+    fl_node_t *best_prev = NULL;
+
+    do {
+        if (p->size >= size) {
+            if (!best || p->size < best->size) {
+                best = p;
+                best_prev = prev;
+                if (best->size == size)
+                    break; // perfect fit, stop early
+            }
+        }
+        prev = p;
+        p = p->next;
+    } while (p != fl->tail->next);
+
+    if (!best)
+        return 1;
+
+    if (best->size == size) {
+        if (best == best_prev) {
+            free(fl->tail);
+            fl->tail = NULL;
+        } else {
+            if (best == fl->tail)
+                fl->tail = best_prev;
+            best_prev->next = best->next;
+            free(best);
+        }
+        return 0;
+    }
+
+    best->size -= size;
+    return 0;
+}
+
+int alloc_func_worst_fit(fl_t *fl, int size) {
+    if (!fl->tail)
+        return 1;
+
+    fl_node_t *prev = fl->tail;
+    fl_node_t *p = fl->tail->next;
+
+    fl_node_t *worst = NULL;
+    fl_node_t *worst_prev = NULL;
+
+    do {
+        if (p->size >= size) {
+            if (!worst || p->size > worst->size) {
+                worst = p;
+                worst_prev = prev;
+            }
+        }
+        prev = p;
+        p = p->next;
+    } while (p != fl->tail->next);
+
+    if (!worst)
+        return 1;
+
+    if (worst->size == size) {
+        if (worst == worst_prev) {
+            free(fl->tail);
+            fl->tail = NULL;
+        } else {
+            if (worst == fl->tail)
+                fl->tail = worst_prev;
+            worst_prev->next = worst->next;
+            free(worst);
+        }
+        return 0;
+    }
+
+    worst->size -= size;
+    return 0;
+}
+
+#define ALLOC_FUNC_COUNT 4
 const char *func_names[ALLOC_FUNC_COUNT] = {
     "FirstFit",
+    "NextFit",
+    "BestFit",
+    "WorstFit",
 };
 
 const alloc_func_t alloc_funcs[ALLOC_FUNC_COUNT] = {
     alloc_func_first_fit,
+    alloc_func_next_fit,
+    alloc_func_best_fit,
+    alloc_func_worst_fit,
 };
 
 test_result_t test_results[ALLOC_FUNC_COUNT];
