@@ -285,8 +285,8 @@ void test_alloc_funcs(const fl_t *fl, const int *sizes, int sizes_size, const al
         }
 
         cur_result->total_allocs = sizes_size;
-        cur_result->total_free_memory = get_total_free(fl);
-        cur_result->largest_free_chunk = get_largest_chunk_size(fl);
+        cur_result->total_free_memory = get_total_free(&fl_copy);
+        cur_result->largest_free_chunk = get_largest_chunk_size(&fl_copy);
 
         fl_free(&fl_copy);
     }
